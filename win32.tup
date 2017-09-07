@@ -6,7 +6,7 @@ CXX := $(WRAP) cl
 REAPACK_FILE := reaper_reapack@(SUFFIX)
 
 CXXFLAGS := /nologo /W3 /WX /wd4996 /EHsc /MT
-CXXFLAGS += /O2 /Z7 /Zo
+CXXFLAGS += /O2 /GL /Z7 /Zo
 CXXFLAGS += /Ivendor /Ivendor/WDL /Ivendor/WDL/WDL
 CXXFLAGS += /Ivendor/libcurl@(SUFFIX)/include
 CXXFLAGS += /DWDL_NO_DEFINE_MINMAX
@@ -29,7 +29,7 @@ LDFLAGS := /nologo User32.lib Shell32.lib Gdi32.lib Comdlg32.lib
 LDFLAGS += vendor/libcurl@(SUFFIX)/lib/libcurl_a.lib
 LDFLAGS += $(TUP_VARIANTDIR)/src/resource.res
 LDFLAGS += $(TUP_VARIANTDIR)/build/vendor/sqlite3.o
-LDFLAGS += /DEBUG /OPT:REF /PDBALTPATH:%_PDB%
+LDFLAGS += /DEBUG /OPT:REF /PDBALTPATH:%_PDB% /LTCG
 
 LINKDEPS := src/resource.res build/vendor/sqlite3.o
 
