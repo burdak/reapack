@@ -22,14 +22,16 @@
 
 #include <boost/logic/tribool.hpp>
 #include <boost/optional.hpp>
-#include <map>
+#include <memory>
+#include <unordered_map>
+#include <unordered_set>
 
 class ListView;
 class Menu;
-class Remote;
 struct NetworkOpts;
 
-typedef boost::logic::tribool tribool;
+class Remote;
+typedef std::shared_ptr<Remote> RemotePtr;
 
 class Manager : public Dialog {
 public:
@@ -47,21 +49,32 @@ protected:
 
 private:
   struct RemoteMods {
+    RemotePtr remote;
+
     boost::optional<bool> enable;
-    boost::optional<tribool> autoInstall;
-    operator bool() const { return enable || autoInstall; }
+    boost::optional<boost::tribool> autoInstall;
+    bool uninstall;
+
+    operator bool() const { return enable || autoInstall || uninstall; }
+    bool operator==(const RemotePtr &r) const { return remote == r; }
   };
 
-  typedef std::function<void (const Remote &, int index, RemoteMods *)> ModsCallback;
+  typedef std::function<void (RemoteMods &, int index)> ModsCallback;
 
-  Remote getRemote(int index) const;
-  bool fillContextMenu(Menu &, int index) const;
+  auto findMods(const RemotePtr &r) { return std::find(m_mods.begin(), m_mods.end(), r); }
+  auto findMods(const RemotePtr &r) const { return std::find(m_mods.begin(), m_mods.end(), r); }
   void setMods(const ModsCallback &);
+  void setMods(int index, const ModsCallback &);
+
+  RemotePtr getRemote(int index) const;
+
+  bool fillContextMenu(Menu &, int index) const;
   void toggleEnabled();
-  bool isRemoteEnabled(const Remote &) const;
-  void setRemoteAutoInstall(const tribool &);
-  tribool remoteAutoInstall(const Remote &) const;
+  bool isRemoteEnabled(const RemotePtr &) const;
+  void setRemoteAutoInstall(const boost::tribool &);
+  boost::tribool remoteAutoInstall(const RemotePtr &) const;
   void uninstall();
+  bool isUninstalled(const RemotePtr &) const;
   void toggle(boost::optional<bool> &, bool current);
   void refreshIndex();
   void copyUrl();
@@ -84,8 +97,7 @@ private:
   size_t m_changes;
   bool m_importing;
 
-  std::map<Remote, RemoteMods> m_mods;
-  std::set<Remote> m_uninstall;
+  std::vector<RemoteMods> m_mods;
   boost::optional<bool> m_autoInstall;
   boost::optional<bool> m_bleedingEdge;
   boost::optional<bool> m_promptObsolete;

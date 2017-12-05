@@ -42,28 +42,26 @@ The repository index is downloaded asynchronously if the cached copy doesn't exi
   if(!s_entries.count(entry))
     return false;
 
-  // the one given by the user may be deleted while we download the idnex
-  const Registry::Entry entryCopy = entry->regEntry;
+  const RemotePtr &remote = g_reapack->config()->remotes.getByName(entry->regEntry.remote);
 
-  const Remote &repo = g_reapack->remote(entryCopy.remote);
-  if(!repo)
+  if(!remote)
     return false;
 
   Transaction *tx = g_reapack->setupTransaction();
+
   if(!tx)
     return false;
 
-  const vector<Remote> repos = {repo};
-
-  tx->fetchIndexes(repos);
+  tx->fetchIndex(remote);
   tx->onFinish([=] {
-    const auto &indexes = tx->getIndexes(repos);
-    if(indexes.empty())
+    IndexPtr index = remote->index();
+    if(!index)
       return;
 
-    const Package *pkg = indexes.front()->find(entryCopy.category, entryCopy.package);
-    if(pkg)
-      g_reapack->about()->setDelegate(make_shared<AboutPackageDelegate>(pkg, entryCopy.version));
+    // const Package *pkg = index->find(entryCopy.category, entryCopy.package);
+    // if(pkg)
+    //   pkg->about(entryCopy.version);
+      // g_reapack->about()->setDelegate(make_shared<AboutPackageDelegate>(pkg, entryCopy.version));
   });
   tx->runTasks();
 

@@ -423,7 +423,7 @@ void Browser::refresh(const bool stale)
     break;
   }
 
-  const vector<Remote> &remotes = g_reapack->config()->remotes.getEnabled();
+  const vector<RemotePtr> &remotes = g_reapack->config()->remotes.getEnabled();
 
   if(remotes.empty()) {
     if(!isVisible() || stale) {
@@ -443,10 +443,12 @@ void Browser::refresh(const bool stale)
     const bool isFirstLoad = m_loadState == Init;
     m_loadState = Loading;
 
-    tx->fetchIndexes(remotes, stale);
+    for(const RemotePtr &remote : remotes)
+      tx->fetchIndex(remote, stale);
+
     tx->onFinish([=] {
       if(isFirstLoad || isVisible()) {
-        populate(tx->getIndexes(remotes), tx->registry());
+        populate(remotes, tx->registry());
 
         // Ignore the next call to refreshBrowser() if we know we'll be
         // requested to handle the very same transaction.
@@ -464,7 +466,7 @@ void Browser::refresh(const bool stale)
   }
 }
 
-void Browser::populate(const vector<IndexPtr> &indexes, const Registry *reg)
+void Browser::populate(const vector<RemotePtr> &remotes, const Registry *reg)
 {
   // keep previous entries in memory a bit longer for #transferActions
   vector<Entry> oldEntries;
@@ -472,12 +474,16 @@ void Browser::populate(const vector<IndexPtr> &indexes, const Registry *reg)
 
   m_currentIndex = -1;
 
-  for(const IndexPtr &index : indexes) {
+  for(const RemotePtr &remote : remotes) {
+    const IndexPtr &index = remote->index();
+    if(!index)
+      continue;
+
     for(const Package *pkg : index->packages())
       m_entries.push_back({pkg, reg->getEntry(pkg), index});
 
     // obsolete packages
-    for(const Registry::Entry &regEntry : reg->getEntries(index->name())) {
+    for(const Registry::Entry &regEntry : reg->getEntries(remote->name())) {
       if(!index->find(regEntry.category, regEntry.package))
         m_entries.push_back({regEntry, index});
     }
@@ -538,7 +544,7 @@ void Browser::fillList()
   vector<int> selectIndexes = m_list->selection();
   vector<const Entry *> oldSelection(selectIndexes.size());
   for(size_t i = 0; i < selectIndexes.size(); i++)
-    oldSelection[i] = static_cast<Entry *>(m_list->row(selectIndexes[i])->userData);
+    oldSelection[i] = getEntry(selectIndexes[i]);
   selectIndexes.clear(); // will put new indexes below
 
   m_list->clear();

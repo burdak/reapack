@@ -166,34 +166,40 @@ bool Import::read(MemoryDownload *dl, const size_t idx)
   char msg[1024];
 
   try {
-    IndexPtr index = Index::load({}, dl->contents().c_str());
-    Remote remote = g_reapack->remote(index->name());
-    const bool exists = !remote.isNull();
+    const auto &index = make_shared<Index>();
+    const string &name = index->load(dl->contents().c_str());
+    RemotePtr remote = g_reapack->config()->remotes.getByName(name);
 
-    if(exists && remote.url() != dl->url()) {
-      if(remote.isProtected()) {
-        snprintf(msg, sizeof(msg),
-          "The repository %s is protected and cannot be overwritten.",
-          index->name().c_str());
-        Win32::messageBox(handle(), msg, TITLE, MB_OK);
-        return false;
-      }
-      else {
-        snprintf(msg, sizeof(msg),
-          "%s is already configured with a different URL.\n"
-          "Do you want to overwrite it?", index->name().c_str());
+    if(remote) {
+      remote->setEnabled(true);
 
-        const auto answer = Win32::messageBox(handle(), msg, TITLE, MB_YESNO);
-
-        if(answer != IDYES)
+      if(remote->url() != dl->url()) {
+        if(remote->test(Remote::ProtectedFlag)) {
+          snprintf(msg, sizeof(msg),
+            "The repository %s is protected and cannot be overwritten.",
+            remote->name().c_str());
+          Win32::messageBox(handle(), msg, TITLE, MB_OK);
           return true;
-      }
-    }
-    else if(exists && remote.isEnabled()) // url is also the same
-      return true; // nothing to do
+        }
+        else {
+          snprintf(msg, sizeof(msg),
+            "%s is already configured with a different URL.\n"
+            "Do you want to overwrite it?", remote->name().c_str());
 
-    remote.setName(index->name());
-    remote.setUrl(dl->url());
+          const auto answer = Win32::messageBox(handle(), msg, TITLE, MB_YESNO);
+
+          if(answer != IDYES)
+            return true;
+        }
+
+        remote->setUrl(dl->url());
+      }
+
+      remote = nullptr;
+    }
+    else
+      remote = make_shared<Remote>(name, dl->url());
+
     m_queue.push_back({idx, remote, dl->contents()});
 
     return true;
@@ -228,9 +234,10 @@ void Import::processQueue()
 
 bool Import::import(const ImportData &data)
 {
-  g_reapack->addSetRemote(data.remote);
+  if(!g_reapack->config()->remotes.contains(data.remote))
+    g_reapack->config()->remotes.add(data.remote);
 
-  FS::write(Index::pathFor(data.remote.name()), data.contents);
+  FS::write(Index::pathFor(data.remote->name()), data.contents);
 
   return true;
 }

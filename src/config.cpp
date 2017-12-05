@@ -72,40 +72,45 @@ void Config::resetOptions()
 
 void Config::restoreSelfRemote()
 {
-  const string name = "ReaPack";
-  const string url = "https://github.com/cfillion/reapack/raw/master/index.xml";
-
-  Remote remote = remotes.get(name);
-  remote.setName(name);
-  remote.setUrl(url);
-  remote.protect();
-
-  remotes.add(remote);
+  // const string name = "ReaPack";
+  // const string url = 
+  //
+  // Remote remote{"ReaPack", "https://github.com/cfillion/reapack/raw/master/index.xml"};
+  //
+  // Remote *remote = remotes.getByName("ReaPack");
+  // if(remote) {
+  //   remote = remotes.insert();
+  // }
+  // remote->setName("ReaPack");
+  // remote->setUrl(url);
+  // remote->protect();
+  //
+  // remotes.add(remote);
 }
 
 void Config::restoreDefaultRemotes()
 {
-  Remote self = remotes.get("ReaPack");
-  self.setEnabled(true);
-  remotes.add(self);
-
-  const Remote repos[] = {
-    {"ReaTeam Scripts",
-      "https://github.com/ReaTeam/ReaScripts/raw/master/index.xml"},
-    {"ReaTeam JSFX",
-      "https://github.com/ReaTeam/JSFX/raw/master/index.xml"},
-    {"ReaTeam Themes",
-      "https://github.com/ReaTeam/Themes/raw/master/index.xml"},
-    {"ReaTeam LangPacks",
-      "https://github.com/ReaTeam/LangPacks/raw/master/index.xml"},
-    {"MPL Scripts",
-      "https://github.com/MichaelPilyavskiy/ReaScripts/raw/master/index.xml"},
-    {"X-Raym Scripts",
-      "https://github.com/X-Raym/REAPER-ReaScripts/raw/master/index.xml"},
-  };
-
-  for(const Remote &repo : repos)
-    remotes.add(repo);
+  // Remote self = remotes.get("ReaPack");
+  // self.setEnabled(true);
+  // remotes.add(self);
+  //
+  // const Remote repos[] = {
+  //   {"ReaTeam Scripts",
+  //     "https://github.com/ReaTeam/ReaScripts/raw/master/index.xml"},
+  //   {"ReaTeam JSFX",
+  //     "https://github.com/ReaTeam/JSFX/raw/master/index.xml"},
+  //   {"ReaTeam Themes",
+  //     "https://github.com/ReaTeam/Themes/raw/master/index.xml"},
+  //   {"ReaTeam LangPacks",
+  //     "https://github.com/ReaTeam/LangPacks/raw/master/index.xml"},
+  //   {"MPL Scripts",
+  //     "https://github.com/MichaelPilyavskiy/ReaScripts/raw/master/index.xml"},
+  //   {"X-Raym Scripts",
+  //     "https://github.com/X-Raym/REAPER-ReaScripts/raw/master/index.xml"},
+  // };
+  //
+  // for(const Remote &repo : repos)
+  //   remotes.add(repo);
 }
 
 void Config::migrate()
@@ -177,8 +182,7 @@ void Config::readRemotes()
   m_remotesIniSize = getUInt(REMOTES_GRP, SIZE_KEY);
 
   for(unsigned int i = 0; i < m_remotesIniSize; i++) {
-    const string data = getString(REMOTES_GRP, nKey(REMOTE_KEY, i).c_str());
-
+    const string &data = getString(REMOTES_GRP, nKey(REMOTE_KEY, i).c_str());
     remotes.add(Remote::fromString(data));
   }
 }
@@ -189,7 +193,7 @@ void Config::writeRemotes()
 
   unsigned int i = 0;
   for(auto it = remotes.begin(); it != remotes.end(); it++, i++)
-    setString(REMOTES_GRP, nKey(REMOTE_KEY, i).c_str(), it->toString());
+    setString(REMOTES_GRP, nKey(REMOTE_KEY, i).c_str(), (*it)->toString());
 
   cleanupArray(REMOTES_GRP, REMOTE_KEY, i, m_remotesIniSize);
 

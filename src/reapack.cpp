@@ -155,7 +155,7 @@ void ReaPack::setupAPI(const APIFunc *func)
 
 void ReaPack::synchronizeAll()
 {
-  const vector<Remote> &remotes = m_config->remotes.getEnabled();
+  const vector<RemotePtr> &remotes = m_config->remotes.getEnabled();
 
   if(remotes.empty()) {
     ShowMessageBox("No repository enabled, nothing to do!", "ReaPack", MB_OK);
@@ -167,38 +167,10 @@ void ReaPack::synchronizeAll()
   if(!tx)
     return;
 
-  for(const Remote &remote : remotes)
+  for(const RemotePtr &remote : remotes)
     tx->synchronize(remote);
 
   tx->runTasks();
-}
-
-void ReaPack::addSetRemote(const Remote &remote)
-{
-  if(remote.isEnabled() && remote.autoInstall(m_config->install.autoInstall)) {
-    const Remote &previous = m_config->remotes.get(remote.name());
-
-    if(!previous || !previous.isEnabled() || previous.url() != remote.url()) {
-      if(Transaction *tx = setupTransaction())
-        tx->synchronize(remote);
-    }
-  }
-
-  m_config->remotes.add(remote);
-}
-
-void ReaPack::uninstall(const Remote &remote)
-{
-  if(remote.isProtected())
-    return;
-
-  assert(m_tx);
-  m_tx->uninstall(remote);
-
-  m_tx->onFinish([=] {
-    if(!m_tx->isCancelled())
-      m_config->remotes.remove(remote);
-  });
 }
 
 void ReaPack::importRemote()
@@ -227,31 +199,10 @@ void ReaPack::manageRemotes()
   });
 }
 
-Remote ReaPack::remote(const string &name) const
-{
-  return m_config->remotes.get(name);
-}
-
-void ReaPack::about(const Remote &repo, const bool focus)
-{
-  Transaction *tx = setupTransaction();
-  if(!tx)
-    return;
-
-  const vector<Remote> repos = {repo};
-
-  tx->fetchIndexes(repos);
-  tx->onFinish([=] {
-    const auto &indexes = tx->getIndexes(repos);
-    if(!indexes.empty())
-      about()->setDelegate(make_shared<AboutIndexDelegate>(indexes.front()), focus);
-  });
-  tx->runTasks();
-}
-
 void ReaPack::aboutSelf()
 {
-  about(remote("ReaPack"));
+  if(const auto self = m_config->remotes.getByName("ReaPack"))
+    self->about();
 }
 
 About *ReaPack::about(const bool instantiate)
@@ -404,7 +355,7 @@ void ReaPack::createDirectories()
 void ReaPack::registerSelf()
 {
   // hard-coding galore!
-  Index ri("ReaPack");
+  Index ri(nullptr);
   Category cat("Extensions", &ri);
   Package pkg(Package::ExtensionType, "ReaPack.ext", &cat);
   Version ver(VERSION, &pkg);

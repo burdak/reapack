@@ -38,6 +38,7 @@ class SynchronizeTask;
 class UninstallTask;
 
 typedef std::shared_ptr<Task> TaskPtr;
+typedef std::shared_ptr<Remote> RemotePtr;
 
 struct HostTicket { bool add; Registry::Entry entry; Registry::File file; };
 
@@ -53,15 +54,14 @@ public:
   void setCleanupHandler(const CleanupHandler &cb) { m_cleanupHandler = cb; }
   void setObsoleteHandler(const ObsoleteHandler &cb) { m_promptObsolete = cb; }
 
-  void fetchIndexes(const std::vector<Remote> &, bool stale = false);
-  std::vector<IndexPtr> getIndexes(const std::vector<Remote> &) const;
-  void synchronize(const Remote &,
+  void fetchIndex(const RemotePtr &, bool stale = false);
+  void synchronize(const RemotePtr &,
     boost::optional<bool> forceAutoInstall = boost::none);
   void install(const Version *, bool pin = false, const ArchiveReaderPtr & = nullptr);
   void install(const Version *, const Registry::Entry &oldEntry,
     bool pin = false, const ArchiveReaderPtr & = nullptr);
   void setPinned(const Registry::Entry &, bool pinned);
-  void uninstall(const Remote &);
+  void uninstall(const RemotePtr &);
   void uninstall(const Registry::Entry &);
   void exportArchive(const std::string &path);
   bool runTasks();
@@ -77,7 +77,8 @@ protected:
   friend InstallTask;
   friend UninstallTask;
 
-  IndexPtr loadIndex(const Remote &);
+  IndexPtr loadIndex(const RemotePtr &);
+  void addIndex(const IndexPtr &index) { m_indexes.push_back(index); }
   void addObsolete(const Registry::Entry &e) { m_obsolete.insert(e); }
   void registerAll(bool add, const Registry::Entry &);
   void registerFile(const HostTicket &t) { m_regQueue.push(t); }
@@ -96,7 +97,7 @@ private:
 
   void registerQueued();
   void registerScript(const HostTicket &, bool isLast);
-  void inhibit(const Remote &);
+  void inhibit(const RemotePtr &);
   void promptObsolete();
   void runQueue(TaskQueue &queue);
   bool commitTasks();
@@ -106,8 +107,7 @@ private:
   Registry m_registry;
   Receipt m_receipt;
 
-  std::unordered_set<std::string> m_syncedRemotes;
-  std::map<std::string, IndexPtr> m_indexes;
+  std::vector<IndexPtr> m_indexes; // keep alive until the transaction is destroyed
   std::unordered_set<std::string> m_inhibited;
   std::unordered_set<Registry::Entry> m_obsolete;
 
